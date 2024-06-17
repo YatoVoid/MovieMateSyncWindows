@@ -1,0 +1,17 @@
+{
+  "themes": {
+    "default": "dark",
+    "available": ["green", "dark", "blue"]
+  },
+  "fonts": {
+    "default": "Helvetica",
+    "sizes": {
+      "small": 10,
+      "normal": 12,
+      "large": 30
+    }
+  },
+  "server": {
+    "default_port": 12345
+  }
+}
