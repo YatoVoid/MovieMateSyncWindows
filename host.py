@@ -154,8 +154,6 @@ def show_controls(event=None):
     global hide_control_timer
     hide_control_ui = False
     control_frame.place(relx=0.5, rely=1.0, anchor=tk.S)
-    control_frame.attributes("-alpha", 1)
-
     reset_hide_controls()
 
 
@@ -169,7 +167,6 @@ def reset_hide_controls():
 def hide_controls():
     global hide_control_ui
     control_frame.place_forget()
-    control_frame.attributes("-alpha", 1.0)  # Reset transparency
     hide_control_ui = True
 
 
@@ -229,7 +226,8 @@ def vlc_player():
     button_close = tk.Button(control_frame, text="Close (Esc)", command=close_window)
     button_close.pack(side=tk.LEFT, padx=10)
 
-    control_frame.pack(side=tk.BOTTOM, fill=tk.X)
+    control_frame.place(relx=0.5, rely=1.0, anchor=tk.S)
+
     reset_hide_controls()
 
     vlc_window.mainloop()
