@@ -338,7 +338,7 @@ def open_movieM_Host():
     port_label = ctk.CTkLabel(server_frame, text=f"Server Port: {server_port}", font=ctk.CTkFont(size=18))
     port_label.pack(pady=(5, 10), padx=10)
 
-    select_file_button = ctk.CTkButton(host, text="Select Movie", command=select_movie)
+    select_file_button = ctk.CTkButton(host, text="Select Movie", command=select_movie, width=220,height=100, font=ctk.CTkFont(size=18))
     select_file_button.pack(pady=(10, 20))
 
     global selected_file_label
