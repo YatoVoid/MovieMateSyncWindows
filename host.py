@@ -8,20 +8,52 @@ import settings as st
 import time
 import json
 import sys
+import os
+import keyboard
+from pynput import mouse
+
+
+def thread_create(function):
+    threading.Thread(target=function).start()
+    threading.Thread(target=function).join()
+
+
+def on_move(x, y):
+    show_controls()
+
+
+def on_click(x, y, button, pressed):
+    show_controls()
+
+
+def on_scroll(x, y, dx, dy):
+    show_controls()
+
+
+def start_mouse_listen():
+    with mouse.Listener(
+            on_move=on_move,
+            on_click=on_click,
+            on_scroll=on_scroll) as listener:
+        listener.join()
+
+
+os.add_dll_directory(r'C:\Program Files\VideoLAN\VLC')
 
 # Setting the appearance and theme
 ctk.set_appearance_mode(st.default_appearance_mode)
 ctk.set_default_color_theme(st.default_color_theme)
 
-Instance = vlc.Instance()
+Instance = vlc.Instance("--no-video-title-show")
 player = Instance.media_player_new()
+
 file_path = "/"
 hide_control_ui = False
 hide_control_timer = None
 vlc_window_open = False  # Variable to track if VLC window is open
 
 client_socket = None
-server_address = '127.0.0.1'  # Default server address
+server_address = '0.0.0.0'  # Default to bind to all interfaces
 server_port = 12345  # Default server port
 
 server_running = True  # Flag to control server thread
@@ -62,12 +94,10 @@ def send_player_info():
         print(f"Error sending player info: {e}")
 
 
-# Function to start the server
 def start_server():
     global client_socket
     global server_address
     global server_port
-    global server_running
 
     if server_address is None or server_port is None:
         print("Server address or port is not properly initialized.")
@@ -80,17 +110,11 @@ def start_server():
 
         print(f"Server listening on {server_address}:{server_port}")
 
-        while server_running:
-            server_socket.settimeout(1)  # Set timeout to allow thread to exit
-            try:
-                client_socket, addr = server_socket.accept()
-                print(f"Client connected from {addr}")
+        client_socket, addr = server_socket.accept()
+        print(f"Client connected from {addr}")
 
-                while server_running:
-                    send_player_info()
-
-            except socket.timeout:
-                continue
+        while True:
+            send_player_info()
 
     except Exception as e:
         print(f"Error starting server: {e}")
@@ -98,10 +122,17 @@ def start_server():
         server_socket.close()
 
 
-def start_movie(display, file_path):  # Start video in any frame with given file path
+def start_movie(display, file_path):
+    global player
     Media = Instance.media_new(file_path)
-    player.set_xwindow(display.winfo_id())
+
+    # Set media to player
     player.set_media(Media)
+
+    # Set the window handle to embed VLC
+    player.set_hwnd(display.winfo_id())
+
+    # Play the media
     player.play()
 
 
@@ -110,7 +141,7 @@ def select_movie():
     file_path = filedialog.askopenfilename()
     if file_path:
         # Update label with selected file path
-        selected_file_label.config(text=file_path)
+        selected_file_label.configure(text=file_path)
         vlc_player()
 
 
@@ -122,21 +153,26 @@ def toggle_fullscreen(vlc_window):
 
 
 def skip_forward():
-    player.set_time(player.get_time() + 5000)  # Skip forward 5 seconds
+    # Skip forward 5 seconds
+    thread_create(lambda: player.set_time(player.get_time() + 5000))
+
     send_thread = threading.Thread(target=send_player_info)
     send_thread.start()
     send_thread.join()
 
 
 def skip_backward():
-    player.set_time(player.get_time() - 5000)  # Rewind 5 seconds
+    # Rewind 5 seconds
+    thread_create(lambda: player.set_time(player.get_time() - 5000))
+
     send_thread = threading.Thread(target=send_player_info)
     send_thread.start()
     send_thread.join()
 
 
 def toggle_pause(event=None):
-    player.pause()  # Pause or unpause the video
+    # Pause or unpause the video
+    thread_create(player.pause)
     send_thread = threading.Thread(target=send_player_info)
     send_thread.start()
     send_thread.join()
@@ -144,9 +180,12 @@ def toggle_pause(event=None):
 
 def close_window(event=None):
     global vlc_window_open
+    global mouse_listener
     player.stop()
     vlc_window.destroy()
     vlc_window_open = False  # Update the status when VLC window is closed
+    if mouse_listener:
+        mouse_listener.stop()  # Stop the mouse listener
 
 
 def show_controls(event=None):
@@ -175,6 +214,7 @@ def vlc_player():
     global vlc_window
     global control_frame
     global vlc_window_open
+    global mouse_listener
 
     if vlc_window_open:
         print("VLC player is already running.")
@@ -204,8 +244,7 @@ def vlc_player():
     vlc_window.bind("<Left>", lambda event: skip_backward())
     vlc_window.bind("<Right>", lambda event: skip_forward())
     vlc_window.bind("<Escape>", close_window)
-    vlc_window.bind("<Motion>", show_controls)
-    vlc_window.bind("<Key>", show_controls)
+    keyboard.on_press(show_controls)
 
     # Create control buttons
     control_frame = tk.Frame(vlc_window, bg='gray')
@@ -227,8 +266,15 @@ def vlc_player():
     button_close.pack(side=tk.LEFT, padx=10)
 
     control_frame.place(relx=0.5, rely=1.0, anchor=tk.S)
-
     reset_hide_controls()
+
+    # Start mouse listener
+    mouse_listener = mouse.Listener(
+        on_move=on_move,
+        on_click=on_click,
+        on_scroll=on_scroll
+    )
+    mouse_listener.start()
 
     vlc_window.mainloop()
 
@@ -249,9 +295,7 @@ def get_local_ip():
 
 
 def on_closing():
-    global server_running
     print("Closing application...")
-    server_running = False
     if client_socket:
         client_socket.close()
     sys.exit(0)
@@ -269,41 +313,40 @@ def open_movieM_Host():
     host.geometry("980x610")
     host.minsize(980, 610)
 
-    # Handle window close event
+    # Handle closing the application
     host.protocol("WM_DELETE_WINDOW", on_closing)
 
-    middle_frame = ctk.CTkFrame(host, width=200, height=350)
-    middle_frame.place(relx=0.35, rely=0.5, anchor=ctk.CENTER)
+    # Host frame
+    frame = ctk.CTkFrame(host)
+    frame.pack(pady=40, padx=60, fill="both", expand=True)
 
-    button_select_movie = ctk.CTkButton(master=middle_frame, text="Select Media", corner_radius=30,
-                                        command=lambda: select_movie(),
-                                        height=50, width=150, font=(st.default_font_family, st.font_sizes["large"]))
-    button_select_movie.pack(pady=20)
+    # Server frame
+    server_frame = ctk.CTkFrame(frame)
+    server_frame.pack(pady=10, padx=10, fill="both", expand=True)
 
-    button_get_player_info = ctk.CTkButton(master=middle_frame, text="Get Player Info", corner_radius=30,
-                                           command=lambda: get_player_info(),
-                                           height=50, width=150, font=(st.default_font_family, st.font_sizes["large"]))
-    button_get_player_info.pack(pady=20)
+    host.title("Movie Mate")
 
-    # Right frame for connection inputs and buttons
-    right_frame = ctk.CTkFrame(host, width=200, height=350)
-    right_frame.place(relx=0.65, rely=0.5, anchor=ctk.CENTER)
+    heading_label = ctk.CTkLabel(server_frame, text="Movie Mate Host", font=ctk.CTkFont(size=24, weight="bold"))
+    heading_label.pack(pady=(10, 5), padx=10)
 
-    server_ip_label = ctk.CTkLabel(right_frame, text="Server IP:")
-    server_ip_label.pack(pady=5)
-    server_ip_entry = ctk.CTkEntry(right_frame, width=150)
-    server_ip_entry.pack(pady=5)
-    server_ip_entry.insert(0, server_address)  # Insert server IP address
+    # Get the local IP address and update the server frame
+    local_ip = get_local_ip()
 
-    server_port_label = ctk.CTkLabel(right_frame, text="Server Port:")
-    server_port_label.pack(pady=5)
-    server_port_entry = ctk.CTkEntry(right_frame, width=150)
-    server_port_entry.pack(pady=5)
-    server_port_entry.insert(0, str(server_port))  # Insert server port
+    ip_label = ctk.CTkLabel(server_frame, text=f"Server IP: {local_ip}", font=ctk.CTkFont(size=18))
+    ip_label.pack(pady=(10, 5), padx=10)
+
+    port_label = ctk.CTkLabel(server_frame, text=f"Server Port: {server_port}", font=ctk.CTkFont(size=18))
+    port_label.pack(pady=(5, 10), padx=10)
+
+    select_file_button = ctk.CTkButton(host, text="Select Movie", command=select_movie)
+    select_file_button.pack(pady=(10, 20))
 
     global selected_file_label
-    selected_file_label = tk.Label(middle_frame, text="", wraplength=180)
-    selected_file_label.pack(pady=10)
+    selected_file_label = ctk.CTkLabel(host, text="", font=ctk.CTkFont(size=16))
+    selected_file_label.pack(pady=(10, 20))
+
     host.mainloop()
 
-open_movieM_Host()
+
+if __name__ == "__main__":
+    open_movieM_Host()
