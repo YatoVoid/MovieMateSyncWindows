@@ -15,7 +15,6 @@ def open_movieM_Viewer(menu):
     viewer.open_movieM_Viewer()
 
 def on_closing():
-    # Implement any cleanup actions here, like stopping threads
     print("Closing application...")
     sys.exit(0)
 
