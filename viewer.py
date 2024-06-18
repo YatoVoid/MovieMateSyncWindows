@@ -4,12 +4,11 @@ from tkinter import filedialog
 import vlc
 import socket
 import threading
-import settings as st
 import json
 
 # Setting the appearance and theme
-ctk.set_appearance_mode(st.default_appearance_mode)
-ctk.set_default_color_theme(st.default_color_theme)
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("blue")
 
 # Global variables
 client_socket = None
@@ -19,33 +18,28 @@ current_playing = True
 Instance = vlc.Instance()
 player = Instance.media_player_new()
 file_path = "/"
-
-
+vlc_window = None
 
 def connect_to_server(server_ip_entry, server_port_entry):
     global client_socket, server_address, server_port
 
-    # Get server IP and port from input fields
     server_address = server_ip_entry.get()
     server_port = server_port_entry.get()
 
-    # Validate IP address and port
     if not server_address or not server_port:
         print("Please enter both IP address and port.")
         return
 
     try:
-        server_port = int(server_port)  # Convert port to integer
+        server_port = int(server_port)
 
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((server_address, server_port))
         print(f"Connected to server {server_address}:{server_port}")
 
-
         play_media = threading.Thread(target=select_and_play_media)
         play_media.start()
 
-        # Start a thread to receive data from server
         receive_thread = threading.Thread(target=receive_data_from_server)
         receive_thread.start()
 
@@ -55,14 +49,12 @@ def connect_to_server(server_ip_entry, server_port_entry):
         print(f"Error connecting to server: {e}")
         client_socket = None
 
-
 def disconnect_from_server():
     global client_socket
     if client_socket:
         client_socket.close()
         client_socket = None
         print("Disconnected from server")
-
 
 def receive_data_from_server():
     global client_socket
@@ -74,22 +66,21 @@ def receive_data_from_server():
                 break
             print(f"Received data from server: {data}")
 
-            # Process received data if needed (for example, seek to a specific time)
             try:
                 data_dict = json.loads(data)
                 if 'current_time' in data_dict:
                     seek_to_time = int(data_dict['current_time'])
                     player.set_time(seek_to_time)
-                    print("TIME:",seek_to_time)
+                    print("TIME:", seek_to_time)
 
                 if 'is_playing' in data_dict:
-                    print("PLY:",data_dict['is_playing'])
+                    print("PLY:", data_dict['is_playing'])
 
-                    if data_dict['is_playing']==False and current_playing!=False:
+                    if data_dict['is_playing'] == False and current_playing != False:
                         player.pause()
                         current_playing = False
 
-                    if data_dict['is_playing']==True and current_playing!=True:
+                    if data_dict['is_playing'] == True and current_playing != True:
                         player.play()
                         current_playing = True
 
@@ -100,21 +91,37 @@ def receive_data_from_server():
             print(f"Error receiving data: {e}")
             break
 
-
 def start_movie():
     global file_path
+    global vlc_window
+
+    vlc_window = ctk.CTkToplevel()  # Create a new Toplevel window for the VLC player
+    vlc_window.geometry("800x600")
+    vlc_window.minsize(800, 600)
+    vlc_window.attributes('-fullscreen', True)
+
+    vlc_frame = tk.Frame(vlc_window, bg='black')
+    vlc_frame.pack(fill=tk.BOTH, expand=True)
 
     Media = Instance.media_new(file_path)
     player.set_media(Media)
+    player.set_hwnd(vlc_frame.winfo_id())
     player.play()
 
+    vlc_window.bind("<Escape>", close_vlc_window)
+
+def close_vlc_window(event=None):
+    global vlc_window
+    if vlc_window:
+        player.stop()
+        vlc_window.destroy()
+        vlc_window = None
 
 def select_and_play_media():
     global file_path
     file_path = filedialog.askopenfilename()
     if file_path:
         start_movie()
-
 
 def open_movieM_Viewer():
     global server_address, server_port
@@ -141,19 +148,14 @@ def open_movieM_Viewer():
 
     button_connect = ctk.CTkButton(master=frame, text="Connect", corner_radius=30,
                                    command=lambda: connect_to_server(server_ip_entry, server_port_entry),
-                                   height=50, width=200, font=(st.default_font_family, st.font_sizes["large"]))
+                                   height=50, width=200, font=("Helvetica", 16))
     button_connect.pack(pady=20)
 
     button_disconnect = ctk.CTkButton(master=frame, text="Disconnect", corner_radius=30,
                                       command=disconnect_from_server,
-                                      height=50, width=150, font=(st.default_font_family, st.font_sizes["large"]))
+                                      height=50, width=150, font=("Helvetica", 16))
     button_disconnect.pack(pady=20)
 
     viewer.mainloop()
 
 
-
-
-
-# Entry point
-#open_movieM_Viewer()
