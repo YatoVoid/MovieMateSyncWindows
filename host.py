@@ -113,8 +113,7 @@ def start_server():
         client_socket, addr = server_socket.accept()
         print(f"Client connected from {addr}")
 
-        while True:
-            send_player_info()
+
 
     except Exception as e:
         print(f"Error starting server: {e}")
