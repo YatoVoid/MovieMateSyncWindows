@@ -6,6 +6,8 @@ import socket
 import threading
 import settings as st
 import json
+import os
+
 
 # Setting the appearance and theme
 ctk.set_appearance_mode(st.default_appearance_mode)
