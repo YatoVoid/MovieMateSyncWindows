@@ -8,15 +8,14 @@ import settings as st
 import time
 import json
 import sys
-import os
-import keyboard
+from keyboard import on_press
 from pynput import mouse
 
 
 def thread_create(function):
-    threading.Thread(target=function).start()
-    threading.Thread(target=function).join()
-
+    thread = threading.Thread(target=function)
+    thread.start()
+    thread.join()
 
 def on_move(x, y):
     show_controls()
@@ -38,7 +37,6 @@ def start_mouse_listen():
         listener.join()
 
 
-os.add_dll_directory(r'C:\Program Files\VideoLAN\VLC')
 
 # Setting the appearance and theme
 ctk.set_appearance_mode(st.default_appearance_mode)
@@ -89,7 +87,7 @@ def send_player_info():
         json_data = json.dumps(player_info).encode('utf-8')
         if client_socket:
             client_socket.sendall(json_data)
-        time.sleep(3)  # Send info every 3 seconds
+
     except Exception as e:
         print(f"Error sending player info: {e}")
 
@@ -244,7 +242,7 @@ def vlc_player():
     vlc_window.bind("<Left>", lambda event: skip_backward())
     vlc_window.bind("<Right>", lambda event: skip_forward())
     vlc_window.bind("<Escape>", close_window)
-    keyboard.on_press(show_controls)
+    on_press(show_controls)
 
     # Create control buttons
     control_frame = tk.Frame(vlc_window, bg='gray')
@@ -324,7 +322,7 @@ def open_movieM_Host():
     server_frame = ctk.CTkFrame(frame)
     server_frame.pack(pady=10, padx=10, fill="both", expand=True)
 
-    host.title("Movie Mate")
+    host.title("MovieMateSyncHost")
 
     heading_label = ctk.CTkLabel(server_frame, text="Movie Mate Host", font=ctk.CTkFont(size=24, weight="bold"))
     heading_label.pack(pady=(10, 5), padx=10)
@@ -348,5 +346,4 @@ def open_movieM_Host():
     host.mainloop()
 
 
-if __name__ == "__main__":
-    open_movieM_Host()
+
