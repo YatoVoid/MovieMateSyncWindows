@@ -1,7 +1,7 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog
-import vlc
+from vlc import Instance
 import socket
 import threading
 import settings as st
@@ -10,6 +10,8 @@ import json
 import sys
 from keyboard import on_press
 from pynput import mouse
+import os
+
 
 
 def thread_create(function):
@@ -42,7 +44,7 @@ def start_mouse_listen():
 ctk.set_appearance_mode(st.default_appearance_mode)
 ctk.set_default_color_theme(st.default_color_theme)
 
-Instance = vlc.Instance("--no-video-title-show")
+Instance = Instance("--no-video-title-show")
 player = Instance.media_player_new()
 
 file_path = "/"
@@ -344,6 +346,4 @@ def open_movieM_Host():
     selected_file_label.pack(pady=(10, 20))
 
     host.mainloop()
-
-
 
