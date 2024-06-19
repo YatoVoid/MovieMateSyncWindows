@@ -6,7 +6,8 @@ import viewer
 import sys
 import os
 import threading
-os.add_dll_directory(r'C:\Program Files\VideoLAN\VLC')
+
+
 
 def thread_create(function):
     threading.Thread(target=function).start()
